@@ -122,13 +122,33 @@ class RFDETR:
         self.model.export(**kwargs)
 
     def train_from_config(self, config: TrainConfig, **kwargs):
-        with open(
-            os.path.join(config.dataset_dir, "train", "_annotations.coco.json"), "r"
-        ) as f:
-            anns = json.load(f)
-            num_classes = len(anns["categories"])
-            class_names = [c["name"] for c in anns["categories"] if c["supercategory"] != "none"]
+        # Handle dataset-specific configurations
+        if config.dataset_file == "teeth3ds":
+            if config.train_test_split == 1:
+                split_files = ['training_lower.txt', 'training_upper.txt'] if config.is_train else ['testing_lower.txt',
+                                                                                         'testing_upper.txt']
+            elif config.train_test_split == 2:
+                split_files = ['public-training-set-1.txt', 'public-training-set-2.txt'] if config.is_train \
+                    else ['private-testing-set.txt']
+            elif config.train_test_split == 0:
+                split_files = ['training_lower_sample.txt', 'training_upper_sample.txt']
+            else:
+                raise ValueError(f'train_test_split should be 0, 1 or 2. not {config.train_test_split}')
+
+            num_classes = 0
+            class_names = []
+            for split_file in split_files:
+                with open(os.path.join(config.dataset_dir, "annotation", split_file.replace('.txt', '_annotation.json')), "r") as f:
+                    anns = json.load(f)
+                    num_classes = num_classes + len(anns["categories"])
+                    class_names.extend(c["name"] for c in anns["categories"] if c["supercategory"] != "none")
             self.model.class_names = class_names
+        else:
+            with open(os.path.join(config.dataset_dir, "train", "_annotations.coco.json"), "r") as f:
+                anns = json.load(f)
+                num_classes = len(anns["categories"])
+                class_names = [c["name"] for c in anns["categories"] if c["supercategory"] != "none"]
+                self.model.class_names = class_names
 
         if self.model_config.num_classes != num_classes:
             logger.warning(
