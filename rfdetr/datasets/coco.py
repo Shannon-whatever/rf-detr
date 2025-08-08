@@ -25,6 +25,7 @@ import torch.utils.data
 import torchvision
 
 import rfdetr.datasets.transforms as T
+from datasets.teeth3ds import Teeth3DSDetection
 
 
 def compute_multi_scale_scales(resolution, expanded_scales=False, patch_size=16, num_windows=4):
@@ -278,3 +279,42 @@ def build_roboflow(image_set, args, resolution):
             num_windows=args.num_windows
         ))
     return dataset
+
+
+def build_teeth3ds(image_set, args, resolution):
+    root = Path(args.dataset_dir)
+    assert root.exists(), f'provided teeth3ds path {root} does not exist'
+    
+    try:
+        square_resize = args.square_resize
+    except:
+        square_resize = False
+    
+    try:
+        square_resize_div_64 = args.square_resize_div_64
+    except:
+        square_resize_div_64 = False
+
+    
+    if square_resize_div_64:
+        transforms = make_coco_transforms_square_div_64(
+            image_set,
+            resolution,
+            multi_scale=args.multi_scale,
+            expanded_scales=args.expanded_scales,
+            skip_random_resize=not args.do_random_resize_via_padding,
+            patch_size=args.patch_size,
+            num_windows=args.num_windows
+        )
+    else:
+        transforms=make_coco_transforms(
+            image_set,
+            resolution,
+            multi_scale=args.multi_scale,
+            expanded_scales=args.expanded_scales,
+            skip_random_resize=not args.do_random_resize_via_padding,
+            patch_size=args.patch_size,
+            num_windows=args.num_windows
+        )
+
+    return Teeth3DSDetection(root, transforms)
